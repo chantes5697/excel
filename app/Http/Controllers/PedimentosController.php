@@ -45,20 +45,39 @@ class PedimentosController extends Controller
     }
 
     // 3. Final Save
-    public function store(Request $request) {
-        $path = $request->input('path');
-        $fullPath = Storage::path($path);
+   public function store(Request $request) 
+{
+    $items = $request->input('items'); // This is the array of selected rows
 
-        if (!Storage::exists($path)) {
-            return response()->json(['error' => 'File expired or not found.'], 404);
+    if (empty($items)) {
+        return response()->json(['error' => 'No data selected'], 400);
+    }
+
+    try {
+        foreach ($items as $item) {
+            // Note: The keys here must match the keys in your JSON (returned from Excel::toArray)
+            // Usually, Maatwebsite Excel converts headers to snake_case.
+            Pedimentos::create([
+                'id_proveedor'     => $item['id_proveedor'],
+                'id_planta'        => $item['id_planta'],
+                'numero_pedimento' => $item['numero_pedimento'] ?? $item['Numero_Pedimento'],
+                'division'         => $item['division'] ?? $item['Division'],
+                'periodo'          => $item['periodo'] ?? $item['Periodo'],
+                'avance'           => $item['avance'] ?? $item['Avance'],
+                'estatus'          => $item['estatus'] ?? $item['Estatus'],
+                'responsable'      => $item['responsable'] ?? $item['Responsable'],
+                'procesos'         => $item['procesos'] ?? $item['procesos'],
+                'inicio_proceso'   => $item['inicio_proceso'] ?? $item['Inicio_Proceso'],
+                'tipo'             => $item['tipo'] ?? $item['tipo'],
+            ]);
         }
 
-        Excel::import(new PedimentosImport, $fullPath);
+        return response()->json(['message' => count($items) . ' rows saved successfully!']);
         
-        Storage::delete($path); // Delete temp file after success
-        
-        return response()->json(['message' => 'Data imported successfully!']);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Database Error: ' . $e->getMessage()], 500);
     }
+}
     /**
      * Display the specified resource.
      */
